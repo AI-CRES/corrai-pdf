@@ -1,0 +1,7 @@
+streamlit==1.25.0
+pandas==1.5.3
+msrest==0.7.1
+openai==0.28.0
+xlsxwriter==3.1.4
+PyMuPDF
+

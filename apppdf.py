@@ -45,7 +45,7 @@ def extract_content_from_image(encoded_image, api_key):
                     ],
                 }
             ],
-            max_tokens=300,
+           
         )
         content = response['choices'][0]['message']['content']
         return content
@@ -87,7 +87,6 @@ def grade_student_copy(reference_content, student_content, api_key, ortho_weight
                 {"role": "system", "content": "Vous êtes un assistant qui identifie les noms des étudiants et évalue leurs réponses."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=150,
             temperature=0.1,
             top_p=1
         )

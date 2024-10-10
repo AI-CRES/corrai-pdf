@@ -73,7 +73,7 @@ def grade_student_copy(reference_content, student_content, api_key, ortho_weight
            - Fautes d'orthographe : {ortho_weight}% du score.
            - Variation syntaxique : {syntax_weight}% du score.
            - Variation logique : {logic_weight}% du score.
-        Fournir une note sur 100 et  commentaire court en analysant pour chaque réponse(en specifier quelques erreurs precie) fournie par l'étudiant sur sa copie, le tout regroupé dans un seul paragraphe.
+        Fournir une note sur 100 et  commentaire court  pour chaque réponse(en specifier quelques erreurs precie) fournie par l'étudiant sur sa copie, le tout regroupé dans un seul paragraphe.
 
         Formatez votre réponse comme suit :
         Nom : [nom de l'étudiant]
@@ -82,7 +82,7 @@ def grade_student_copy(reference_content, student_content, api_key, ortho_weight
         """
 
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "Vous êtes un assistant qui identifie les noms des étudiants et évalue leurs réponses."},
                 {"role": "user", "content": prompt}

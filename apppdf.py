@@ -28,12 +28,7 @@ def display_image_from_base64(encoded_image):
 def extract_content_from_image(encoded_image, api_key):
     try:
         openai.api_key = api_key
-        prompt = f"""
-        Ceci est une image encodée en base64. Essayez d'extraire tout le texte visible ou manuscrit dans l'image.
-        Si l'image contient des éléments non textuels,comme l'image  recuperer les textes contenues dans cette image, et decrivez-le de maniere detaillée
-        Si l'image contient des éléments non textuels, comme des cases à cocher, des réponses encerclées, ou d'autres éléments graphiques, décrivez-les de manière détaillée pour chaque question et indiqué qu'elle est cochée en utilisant le mot "coché" au debut.
-        Vous ne devez en aucun cas répondre par un message indiquant que vous ne pouvez pas extraire le contenu de l'image.
-
+        prompt = f""" Extraire le contenu de cette image.
         """
         
         response = openai.ChatCompletion.create(
@@ -80,7 +75,7 @@ def grade_student_copy(reference_content, student_content, api_key, ortho_weight
            - Fautes d'orthographe : {ortho_weight}% du score.
            - Variation syntaxique : {syntax_weight}% du score.
            - Variation logique : {logic_weight}% du score.
-         Fournir une note finale sur 100, le nom, le matricule, ainsi qu'un commentaire court pour chaque réponse(en specifier quelques erreurs precie) fournie par l'étudiant sur sa copie, le tout regroupé dans un seul paragraphe.
+        Fournir une note sur 100 et un court commentaire.
 
         Formatez votre réponse comme suit :
         Nom : [nom de l'étudiant]

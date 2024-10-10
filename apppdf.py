@@ -30,7 +30,7 @@ def extract_content_from_image(encoded_image, api_key):
         openai.api_key = api_key
         
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {
                     "role": "user",
@@ -73,7 +73,7 @@ def grade_student_copy(reference_content, student_content, api_key, ortho_weight
            - Fautes d'orthographe : {ortho_weight}% du score.
            - Variation syntaxique : {syntax_weight}% du score.
            - Variation logique : {logic_weight}% du score.
-        Fournir une note sur 100 et un court commentaire.
+        Fournir une note sur 100 et  commentaire court en analysant pour chaque réponse(en specifier quelques erreurs precie) fournie par l'étudiant sur sa copie, le tout regroupé dans un seul paragraphe.
 
         Formatez votre réponse comme suit :
         Nom : [nom de l'étudiant]

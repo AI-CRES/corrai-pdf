@@ -24,15 +24,26 @@ def display_image_from_base64(encoded_image):
     image_data = base64.b64decode(encoded_image)
     image = Image.open(io.BytesIO(image_data))
     return image
-
-def extract_content_from_image(encoded_image, api_key):
+# Si l'image contient des éléments non textuels, comme des cases à cocher, des réponses encerclées, ou d'autres éléments graphiques, décrivez-les de manière détaillée pour chaque question et indiqué qu'elle est cochée en utilisant le mot "coché" au debut.
+def extract_content_from_image(encoded_image, api_key, vision_prompt):
     try:
         openai.api_key = api_key
-        prompt = f""" Extraire le contenu de cette image.
+        prompt = f"""
+        "Vous êtes un assistant qui identifie le nom l'étudiant et identifie toutes  les questions , 
+        les reponses associer et la ponderation (si ca existe) associer. 
+        
+        Si une réponse inclut une image, analysez son contenu visuel et fournissez une description concise et pertinente de l'image.
+        
+        Dire obligatoirement s'il y a des questions à choix multiples ou des questions de correspondance ou autres types des questions.
+        
+        Si le texte dans l'image ne peut pas être extrait directement, décrivez les éléments visuels présents, mais pas en detaille.
+        
+        {vision_prompt}
+        
         """
         
         response = openai.ChatCompletion.create(
-            model="gpt-4o",
+            model="chatgpt-4o-latest",
             messages=[
                 {
                     "role": "user",
@@ -47,7 +58,7 @@ def extract_content_from_image(encoded_image, api_key):
                     ],
                 }
             ],
-           
+            
         )
         content = response['choices'][0]['message']['content']
         return content
@@ -58,7 +69,7 @@ def extract_content_from_image(encoded_image, api_key):
         st.error(f"Erreur inattendue: {e}")
         return None
 
-def grade_student_copy(reference_content, student_content, api_key, ortho_weight, syntax_weight, logic_weight):
+def grade_student_copy(reference_content, student_content, api_key, chatgpt_prompt,ortho_weight, syntax_weight, logic_weight):
     try:
         openai.api_key = api_key
         
@@ -70,23 +81,20 @@ def grade_student_copy(reference_content, student_content, api_key, ortho_weight
         {student_content}
 
         Veuillez effectuer les tâches suivantes :
-        1. Identifier le nom de l'étudiant à partir de sa réponse.
-        2. Évaluer la réponse de l'étudiant en fonction des critères suivants :
-           - Fautes d'orthographe : {ortho_weight}% du score.
-           - Variation syntaxique : {syntax_weight}% du score.
-           - Variation logique : {logic_weight}% du score.
-        Fournir une note sur 100 et un court commentaire.
-
+        {chatgpt_prompt}
+        
         Formatez votre réponse comme suit :
         Nom : [nom de l'étudiant]
-        Note : [0-100]
-        Commentaire : [court commentaire]
+        Note : [0-10]
+        Commentaire : [court commentaire expliquant la note, en insistant sur les erreurs et les réussites si applicables]
         """
+
+
 
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Vous êtes un assistant qui identifie les noms des étudiants et évalue leurs réponses."},
+                {"role": "system", "content": "Vous êtes un assistant temporaire. Vous n'avez pas l'autorisation de mémoriser ou de stocker les informations de cette conversation aussi Vous êtes un assistant qui identifie les noms des étudiants et évalue leurs réponses en tenant compte des pondérations spécifiées pour chaque partie de la réponse de référence."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.1,
@@ -95,6 +103,7 @@ def grade_student_copy(reference_content, student_content, api_key, ortho_weight
 
         content = response['choices'][0]['message']['content'].strip()
         name_line, score_line, feedback_line = content.split('\n')
+        print(content)
 
         name = name_line.split(":", 1)[1].strip()
         score = int(''.join(filter(str.isdigit, score_line)))
@@ -165,7 +174,7 @@ def extract_latex_and_text(content):
 
     return parts
 
-st.title("CorrAI : Système de correction des Copies")
+st.title("Système de correction des Copies")
 
 st.header("Télécharger la Copie de Référence (PDF)")
 reference_file = st.file_uploader("Téléchargez le PDF de la copie de référence", type=["pdf"])
@@ -174,9 +183,12 @@ st.header("Télécharger les Copies des Étudiants (PDFs)")
 student_files = st.file_uploader("Téléchargez les PDFs des copies des étudiants", type=["pdf"], accept_multiple_files=True)
 
 st.header("Définir les Niveaux de Correction")
-ortho_weight = st.slider("Fautes d'orthographe", 0, 100, 30)
-syntax_weight = st.slider("Variation syntaxique", 0, 100, 40)
-logic_weight = st.slider("Variation logique", 0, 100, 30)
+ortho_weight = 30
+syntax_weight =  40
+logic_weight = 30
+
+vision_prompt = st.text_area("Entrez le prompt pour la vision :", height=100)
+chatgpt_prompt = st.text_area("Entrez le prompt pour la correction:", height=200)
 
 api_key = st.secrets["API_KEY"]
 
@@ -191,7 +203,7 @@ if st.button("Lancer la correction"):
                     ref_image_bytes = io.BytesIO()
                     ref_img.save(ref_image_bytes, format="PNG")
                     ref_image_base64 = base64.b64encode(ref_image_bytes.getvalue()).decode('utf-8')
-                    reference_content = extract_content_from_image(ref_image_base64, api_key)
+                    reference_content = extract_content_from_image(ref_image_base64, api_key, vision_prompt)
                     if reference_content:
                         reference_texts.append(reference_content)
                 
@@ -222,7 +234,7 @@ if st.button("Lancer la correction"):
                         student_image_bytes = io.BytesIO()
                         student_img.save(student_image_bytes, format="PNG")
                         student_image_base64 = base64.b64encode(student_image_bytes.getvalue()).decode('utf-8')
-                        student_content = extract_content_from_image(student_image_base64, api_key)
+                        student_content = extract_content_from_image(student_image_base64, api_key, vision_prompt)
                         if student_content:
                             student_texts.append(student_content)
                     
@@ -231,6 +243,8 @@ if st.button("Lancer la correction"):
                         continue
 
                     student_text_combined = "\n".join(student_texts)
+                    
+                    
                     
                     st.subheader(f"Copie d'Étudiant : {student_file.name}")
                     for student_img in student_images:
@@ -244,7 +258,7 @@ if st.button("Lancer la correction"):
                         elif part_type == 'latex':
                             st.latex(content)
                     
-                    name, score, feedback = grade_student_copy(reference_text_combined, student_text_combined, api_key, ortho_weight, syntax_weight, logic_weight)
+                    name, score, feedback = grade_student_copy(reference_text_combined, student_text_combined, api_key, chatgpt_prompt, ortho_weight, syntax_weight, logic_weight)
                     st.write(f"Nom: {name}, Note: {score}, Commentaire: {feedback}")
                     results.append({"Nom": name, "Note": score, "Commentaire": feedback})
                 

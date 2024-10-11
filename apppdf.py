@@ -85,7 +85,7 @@ def grade_student_copy(reference_content, student_content, api_key, chatgpt_prom
         
         Formatez votre réponse comme suit :
         Nom : [nom de l'étudiant]
-        Note : [0-10]
+        Note : [0-100]
         Commentaire : [court commentaire expliquant la note, en insistant sur les erreurs et les réussites si applicables]
         """
 
@@ -102,17 +102,33 @@ def grade_student_copy(reference_content, student_content, api_key, chatgpt_prom
         )
 
         content = response['choices'][0]['message']['content'].strip()
-        name_line, score_line, feedback_line = content.split('\n')
-        print(content)
+        lines = content.split('\n')
 
-        name = name_line.split(":", 1)[1].strip()
-        score = int(''.join(filter(str.isdigit, score_line)))
-        feedback = feedback_line.split(":", 1)[1].strip()
-
-    except (KeyError, IndexError, ValueError):
+        # Initialisation des variables
         name = "Inconnu"
         score = "Erreur"
-        feedback = "Erreur dans la génération de la note ou la détection du nom."
+        feedback = "Pas de commentaire."
+
+        # Parcourir les lignes pour extraire les informations
+        for line in lines:
+            if line.startswith("Nom"):
+                name = line.split(":", 1)[1].strip()
+            elif line.startswith("Note"):
+                score_text = line.split(":", 1)[1].strip()
+                # Utiliser la méthode améliorée pour extraire la note
+                score_match = re.search(r"([\d.,]+)(?:/([\d.,]+))?", score_text)
+                if score_match:
+                    numerator = float(score_match.group(1).replace(',', '.'))
+                    denominator = score_match.group(2)
+                    if denominator:
+                        denominator = float(denominator.replace(',', '.'))
+                        score = (numerator / denominator) * 100  # Normaliser si nécessaire
+                    else:
+                        score = numerator
+                else:
+                    score = "Erreur"
+            elif line.startswith("Commentaire"):
+                feedback = line.split(":", 1)[1].strip()
 
     except openai.error.OpenAIError as e:
         st.error(f"Erreur lors de la communication avec l'API OpenAI: {e}")

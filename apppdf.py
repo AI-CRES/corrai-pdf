@@ -74,7 +74,7 @@ def extract_content_from_image_reference(encoded_image, api_key,  vision_prompt)
 
 
 # Si l'image contient des éléments non textuels, comme des cases à cocher, des réponses encerclées, ou d'autres éléments graphiques, décrivez-les de manière détaillée pour chaque question et indiqué qu'elle est cochée en utilisant le mot "coché" au debut.
-def extract_content_from_image(encoded_image, api_key, vision_prompt, reference_content):
+def extract_content_from_image(encoded_image, api_key, vision_prompt, reference_content, promptmetas):
     try:
         openai.api_key = api_key
         prompt = f"""
@@ -99,9 +99,10 @@ def extract_content_from_image(encoded_image, api_key, vision_prompt, reference_
         1. Le Contenu Extrait de la Copie de Référence est utilisé seulement, j'insiste seulement lorsque  vous avez de difficulé à predire ou detecter un texte qui existe et peu visible, donc
         les textes moins visible(difficile à extraire)
         2. Sur Contenu Extrait de la Copie d'Étudiant, vous n'avez pas l'autorisation d'ajouter de textes ou des mots là où il y du vide 
-        (respecter ce consignes stritement pour les cas où la reponse est vide): 
+        (respecter ce consignes stritement pour les cas où la reponse est vide).
+        {promptmetas }
         
-        voici la copie de reference:"
+        voici la copie de reference:
         {reference_content}
         
          """
@@ -110,7 +111,7 @@ def extract_content_from_image(encoded_image, api_key, vision_prompt, reference_
         response = openai.ChatCompletion.create(
             model="chatgpt-4o-latest",
             messages=[
-                {"role": "system", "content":  promptmeta },
+                #{"role": "system", "content":  promptmeta },
                 {
                     "role": "user",
                     "content": [
@@ -275,6 +276,7 @@ syntax_weight =  40
 logic_weight = 30
 
 vision_prompt = st.text_area("Entrez le prompt pour la vision :", height=100)
+promptmeta =st.text_area("Entrez le prompt pour la vision student metaprompt :", height=100)
 chatgpt_prompt = st.text_area("Entrez le prompt pour la correction:", height=200)
 
 api_key = st.secrets["API_KEY"]
@@ -321,7 +323,7 @@ if st.button("Lancer la correction"):
                         student_image_bytes = io.BytesIO()
                         student_img.save(student_image_bytes, format="PNG")
                         student_image_base64 = base64.b64encode(student_image_bytes.getvalue()).decode('utf-8')
-                        student_content = extract_content_from_image(student_image_base64, api_key, vision_prompt,reference_content)
+                        student_content = extract_content_from_image(student_image_base64, api_key, vision_prompt,reference_content,promptmeta )
                         if student_content:
                             student_texts.append(student_content)
                     

@@ -92,11 +92,25 @@ def extract_content_from_image(encoded_image, api_key, vision_prompt, reference_
         {vision_prompt}
         
         """
+
+        promptmeta = f"""
+        "Vous êtes un assistant temporaire, Vous n'avez pas l'autorisation de mémoriser ou de stocker les informations de cette conversation: 
+        Ce qu'il faut respecter strictement:
+        1. Le Contenu Extrait de la Copie de Référence est utilisé seulement, j'insiste seulement lorsque  vous avez de difficulé à predire ou detecter un texte qui existe et peu visible, donc
+        les textes moins visible(difficile à extraire)
+        2. Sur Contenu Extrait de la Copie d'Étudiant, vous n'avez pas l'autorisation d'ajouter de textes ou des mots là où il y du vide 
+        (respecter ce consignes stritement pour les cas où la reponse est vide): 
+        
+        voici la copie de reference:"
+        {reference_content}
+        
+         """
+        
         
         response = openai.ChatCompletion.create(
             model="chatgpt-4o-latest",
             messages=[
-                {"role": "system", "content": "Vous êtes un assistant temporaire, Vous n'avez pas l'autorisation de mémoriser ou de stocker les informations de cette conversation, aussi ces copies de reference est utiliser pour aider à predire les textes moins visible(difficile à extraire) sur les copies des etudiants (n'ajouter pas les mots et les textes n'est pas exister), Vous n'avez pas l'autorisation d'ajouter de textes ou des mots là où il y a vide (respecter ce consignes stritement pour les cas où la reponse est vide): voici la copie de reference:"+reference_content},
+                {"role": "system", "content":  promptmeta },
                 {
                     "role": "user",
                     "content": [

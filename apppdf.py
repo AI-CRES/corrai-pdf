@@ -24,21 +24,22 @@ def display_image_from_base64(encoded_image):
     image_data = base64.b64decode(encoded_image)
     image = Image.open(io.BytesIO(image_data))
     return image
+
 # Si l'image contient des éléments non textuels, comme des cases à cocher, des réponses encerclées, ou d'autres éléments graphiques, décrivez-les de manière détaillée pour chaque question et indiqué qu'elle est cochée en utilisant le mot "coché" au debut.
-def extract_content_from_image(encoded_image, api_key, vision_prompt):
+def extract_content_from_image_reference(encoded_image, api_key,  vision_prompt):
     try:
         openai.api_key = api_key
         prompt = f"""
-        "Vous êtes un assistant qui identifie le nom l'étudiant et identifie toutes  les questions , 
-        les reponses associer et la ponderation (si ca existe) associer. 
-        
-        Si une réponse inclut une image, analysez son contenu visuel et fournissez une description concise et pertinente de l'image.
+        Vous êtes un assistant qui identifie les noms des étudiants et identifie toutes  les questions , 
+        reponse  et la ponderation (si ca existe) associer, en les reproduisant fidelement(sans analyser) comme transcrit sans analyser.
+        Extraire  ou recuperer exactement ce qui se trouve sur l'image sans ajouter ni retrancher. en retranscrivant les contenues.
+        les reponses peuvent manuscrit.
         
         Dire obligatoirement s'il y a des questions à choix multiples ou des questions de correspondance ou autres types des questions.
         
         Si le texte dans l'image ne peut pas être extrait directement, décrivez les éléments visuels présents, mais pas en detaille.
         
-        {vision_prompt}
+         {vision_prompt}
         
         """
         
@@ -68,8 +69,61 @@ def extract_content_from_image(encoded_image, api_key, vision_prompt):
     except Exception as e:
         st.error(f"Erreur inattendue: {e}")
         return None
+    
 
-def grade_student_copy(reference_content, student_content, api_key, chatgpt_prompt,ortho_weight, syntax_weight, logic_weight):
+
+
+# Si l'image contient des éléments non textuels, comme des cases à cocher, des réponses encerclées, ou d'autres éléments graphiques, décrivez-les de manière détaillée pour chaque question et indiqué qu'elle est cochée en utilisant le mot "coché" au debut.
+def extract_content_from_image(encoded_image, api_key, vision_prompt, reference_content):
+    try:
+        openai.api_key = api_key
+        prompt = f"""
+        Vous êtes un assistant temporaire, Vous n'avez pas l'autorisation de mémoriser ou de stocker les informations de cette conversation aussi , 
+        Vous êtes un assistant qui identifie le nom l'étudiant et identifie toutes  les questions , 
+        les reponses associer et la ponderation (si ca existe) associer. 
+        
+        Si les reponses du manuscrit ne sont pas visibles ou un mot dans le manuscrit n'est pas visible, essayez de vous dans
+        contexte ou message systeme si c'est mot n'est là, cela pour ameliorer la detection des mots.
+               
+        Si une réponse inclut une image, analysez son contenu visuel et fournissez une description concise et pertinente de l'image.
+        
+        Dire obligatoirement s'il y a des questions à choix multiples ou des questions de correspondance ou autres types des questions.
+        
+        Si le texte dans l'image ne peut pas être extrait directement, décrivez les éléments visuels présents, mais pas en detaille.
+        
+        {vision_prompt}
+        
+        """
+        
+        response = openai.ChatCompletion.create(
+            model="chatgpt-4o-latest",
+            messages=[
+                {"role": "system", "content": "Vous êtes un assistant temporaire, Vous êtes un assistant temporaire, Vous n'avez pas l'autorisation de mémoriser ou de stocker les informations de cette conversation, aussi ces copies de reference est utiliser pour aider à detecter de maniere efficace les textes invisibles sur les copies des etudiants (n'ajouter pas les mots et les textes qui semnlent n'est pas exister)"+reference_content},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{encoded_image}"
+                            },
+                        },
+                    ],
+                }
+            ],
+            
+        )
+        content = response['choices'][0]['message']['content']
+        return content
+    except openai.error.OpenAIError as e:
+        st.error(f"Erreur lors de la communication avec l'API OpenAI: {e}")
+        return None
+    except Exception as e:
+        st.error(f"Erreur inattendue: {e}")
+        return None
+
+def grade_student_copy(reference_content, student_content, api_key, chatgpt_prompt,ortho_weight, syntax_weight, logic_weight): 
     try:
         openai.api_key = api_key
         
@@ -83,10 +137,15 @@ def grade_student_copy(reference_content, student_content, api_key, chatgpt_prom
         Veuillez effectuer les tâches suivantes :
         {chatgpt_prompt}
         
+        
+        on doit avoir obligatoirement un Court Commentaire expliquant la note,
+        en insistant sur les erreurs et les réussites si applicables(en expliquant chaque point attribuer à une question, justifier pourquoi à avoir donné des points à une questions )
+        
+        
         Formatez votre réponse comme suit :
         Nom : [nom de l'étudiant]
         Note : [0-100]
-        Commentaire : [court commentaire expliquant la note, en insistant sur les erreurs et les réussites si applicables]
+        Commentaire : [Commentaire]
         """
 
 
@@ -132,13 +191,13 @@ def grade_student_copy(reference_content, student_content, api_key, chatgpt_prom
 
     except openai.error.OpenAIError as e:
         st.error(f"Erreur lors de la communication avec l'API OpenAI: {e}")
-        name, score, feedback = "Erreur API", "Erreur", "Impossible d'évaluer."
+        name, score, feedback, content = "Erreur API", "Erreur", "Impossible d'évaluer.", "Content"
 
     except Exception as e:
         st.error(f"Erreur inattendue: {e}")
-        name, score, feedback = "Erreur", "Erreur", "Erreur inattendue."
+        name, score, feedback, content = "Erreur", "Erreur", "Erreur inattendue.", "Content"
 
-    return name, score, feedback
+    return name, score, feedback , content 
 
 def to_csv(df):
     output = BytesIO()
@@ -219,7 +278,7 @@ if st.button("Lancer la correction"):
                     ref_image_bytes = io.BytesIO()
                     ref_img.save(ref_image_bytes, format="PNG")
                     ref_image_base64 = base64.b64encode(ref_image_bytes.getvalue()).decode('utf-8')
-                    reference_content = extract_content_from_image(ref_image_base64, api_key, vision_prompt)
+                    reference_content = extract_content_from_image_reference(ref_image_base64, api_key, vision_prompt)
                     if reference_content:
                         reference_texts.append(reference_content)
                 
@@ -250,7 +309,7 @@ if st.button("Lancer la correction"):
                         student_image_bytes = io.BytesIO()
                         student_img.save(student_image_bytes, format="PNG")
                         student_image_base64 = base64.b64encode(student_image_bytes.getvalue()).decode('utf-8')
-                        student_content = extract_content_from_image(student_image_base64, api_key, vision_prompt)
+                        student_content = extract_content_from_image(student_image_base64, api_key, vision_prompt,reference_content)
                         if student_content:
                             student_texts.append(student_content)
                     
@@ -274,10 +333,11 @@ if st.button("Lancer la correction"):
                         elif part_type == 'latex':
                             st.latex(content)
                     
-                    name, score, feedback = grade_student_copy(reference_text_combined, student_text_combined, api_key, chatgpt_prompt, ortho_weight, syntax_weight, logic_weight)
+                    name, score, feedback, Contents = grade_student_copy(reference_text_combined, student_text_combined, api_key, chatgpt_prompt, ortho_weight, syntax_weight, logic_weight)
                     st.write(f"Nom: {name}, Note: {score}, Commentaire: {feedback}")
-                    results.append({"Nom": name, "Note": score, "Commentaire": feedback})
+                    results.append({"Nom": name, "Note": score, "Commentaire": Contents})
                 
+                st.write(Contents)
                 df_results = pd.DataFrame(results)
                 st.dataframe(df_results)
                 csv_data = to_csv(df_results)
@@ -287,5 +347,4 @@ if st.button("Lancer la correction"):
                 st.error(f"Une erreur s'est produite lors de la correction : {e}")
     else:
         st.warning("Veuillez télécharger tous les fichiers nécessaires et fournir la clé API.")
-
 

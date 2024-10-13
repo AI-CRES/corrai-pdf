@@ -96,7 +96,7 @@ def extract_content_from_image(encoded_image, api_key, vision_prompt, reference_
         response = openai.ChatCompletion.create(
             model="chatgpt-4o-latest",
             messages=[
-                {"role": "system", "content": "Vous êtes un assistant temporaire, Vous êtes un assistant temporaire, Vous n'avez pas l'autorisation de mémoriser ou de stocker les informations de cette conversation, aussi ces copies de reference est utiliser pour aider à detecter de maniere efficace les textes mal detecter sur les copies des etudiants (n'ajouter pas les mots et les textes n'est pas exister)"+reference_content},
+                {"role": "system", "content": "Vous êtes un assistant temporaire, Vous n'avez pas l'autorisation de mémoriser ou de stocker les informations de cette conversation, aussi ces copies de reference est utiliser pour aider à detecter de maniere efficace les textes mal detecter sur les copies des etudiants (n'ajouter pas les mots et les textes n'est pas exister), Vous n'avez pas l'autorisation d'ajouter de textes ou des mots là où il y a vide, le vide reste vide: voici la copie de reference:"+reference_content},
                 {
                     "role": "user",
                     "content": [

@@ -82,10 +82,6 @@ def extract_content_from_image(encoded_image, api_key, vision_prompt, reference_
         Vous êtes un assistant qui identifie le nom l'étudiant et identifie toutes  les questions , 
         les reponses associer et la ponderation (si ca existe) associer. 
         
-        Si les reponses du manuscrit ne sont pas visibles ou un mot dans le manuscrit n'est pas visible, essayez de vous inspirer du
-        contexte ou de message systeme si ce mot est là, cela pour ameliorer la detection des mots. N'ajouter pas des mots ou des textes qui n'existe pas
-        si une reponse ou autres choses est vides, il faudrait laisser ca vide. utiliser le mesage systeme pour seulement pour les mots qui existes, mais invisibles,
-        pour ameliorer la detection de mots.
                
         Si une réponse inclut une image, analysez son contenu visuel et fournissez une description concise et pertinente de l'image.
         
@@ -100,7 +96,7 @@ def extract_content_from_image(encoded_image, api_key, vision_prompt, reference_
         response = openai.ChatCompletion.create(
             model="chatgpt-4o-latest",
             messages=[
-                {"role": "system", "content": "Vous êtes un assistant temporaire, Vous êtes un assistant temporaire, Vous n'avez pas l'autorisation de mémoriser ou de stocker les informations de cette conversation, aussi ces copies de reference est utiliser pour aider à detecter de maniere efficace les textes invisibles sur les copies des etudiants (n'ajouter pas les mots et les textes qui semnlent n'est pas exister)"+reference_content},
+                {"role": "system", "content": "Vous êtes un assistant temporaire, Vous êtes un assistant temporaire, Vous n'avez pas l'autorisation de mémoriser ou de stocker les informations de cette conversation, aussi ces copies de reference est utiliser pour aider à detecter de maniere efficace les textes mal detecter sur les copies des etudiants (n'ajouter pas les mots et les textes n'est pas exister)"+reference_content},
                 {
                     "role": "user",
                     "content": [

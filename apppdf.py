@@ -169,7 +169,7 @@ def grade_student_copy(reference_content, student_content, api_key, chatgpt_prom
                 {"role": "system", "content": "Vous êtes un assistant temporaire. Vous n'avez pas l'autorisation de mémoriser ou de stocker les informations de cette conversation aussi Vous êtes un assistant qui identifie les noms des étudiants et évalue leurs réponses en tenant compte des pondérations spécifiées pour chaque partie de la réponse de référence."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.1,
+            temperature=0.9,
             top_p=1
         )
 

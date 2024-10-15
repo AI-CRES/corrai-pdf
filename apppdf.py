@@ -7,6 +7,8 @@ from PIL import Image
 import fitz  # PyMuPDF
 import io
 import re
+from typing import List, Dict, Any
+
 
 hide_streamlit_style = """
     <style>
@@ -153,12 +155,7 @@ def grade_student_copy(reference_content, student_content, api_key, chatgpt_prom
         
         on doit avoir obligatoirement un Court Commentaire expliquant la note,
         en insistant sur les erreurs et les réussites si applicables(en expliquant chaque point attribuer à une question, justifier pourquoi à avoir donné des points à une questions )
-        
-        
-        Formatez votre réponse comme suit :
-        Nom : [nom de l'étudiant]
-        Note : [0-100]
-        Commentaire : [Commentaire]
+
         """
 
 
@@ -176,14 +173,17 @@ def grade_student_copy(reference_content, student_content, api_key, chatgpt_prom
         content = response['choices'][0]['message']['content'].strip()
         lines = content.split('\n')
 
-        # Initialisation des variables
-        name = "Inconnu"
+        pattern = r'(?:\*\*)?Nom de l\'étudiant\s*:\s*(?:\*\*)?\s*([A-Za-zÀ-ÿ\- ]+)'
+        name_match = re.search(pattern, content, re.IGNORECASE)
+        nom = name_match.group(1).strip() if name_match else 'Inconnu'
+        name=nom
+        
         score = "Erreur"
         feedback = "Pas de commentaire."
 
         # Parcourir les lignes pour extraire les informations
         for line in lines:
-            if line.startswith("Nom"):
+            if line.startswith("Nom de l'étudiant"):
                 name = line.split(":", 1)[1].strip()
             elif line.startswith("Note"):
                 score_text = line.split(":", 1)[1].strip()
@@ -261,6 +261,65 @@ def extract_latex_and_text(content):
         parts.append(('text', remaining_text))
 
     return parts
+  
+def parse_report_single(text: str) -> Dict[str, Any]:
+    """
+    Analyse le rapport d'évaluation d'un seul étudiant et extrait les informations nécessaires.
+
+    Args:
+        text (str): Le texte complet du rapport d'évaluation pour un étudiant.
+
+    Returns:
+        Dict[str, Any]: Un dictionnaire contenant le nom de l'étudiant, les points obtenus, les points totaux et le commentaire.
+    """
+    # Extraire le nom de l'étudiant
+    name_match = re.search(r'Nom de l\'étudiant\s*:\s*([^\n\*]+)', text, re.IGNORECASE)
+    nom = name_match.group(1).strip() if name_match else 'Inconnu'
+
+    # Extraire les points attribués
+    points_patterns = re.compile(r'(?:\*+\s*)?Points attribués\s*:\s*\**\s*(\d+)\s*/\s*(\d+)',re.IGNORECASE)                           
+    # Expression régulière finale ajustée
+    points_pattern = re.compile( r'(?:\*+\s*)?Points attribués(?:\*+\s*)?\s*:\s*\**\s*(\d+)\s*/\s*(\d+)',re.IGNORECASE)
+
+    points_matches = points_pattern.findall(text)
+    print(f"{points_matches}")
+
+    # Calculer la somme des points attribués et des points totaux si des correspondances sont trouvées
+    if points_matches:
+        points_obtenus = sum(int(match[0]) for match in points_matches)
+        points_totaux = sum(int(match[1]) for match in points_matches)
+    else:
+        points_obtenus = 0
+        points_totaux = 0
+
+    # Extraire le commentaire global (facultatif)
+    commentaire_pattern = re.compile(r'Court Commentaire expliquant la note\s*:\s*(.*)', re.IGNORECASE | re.DOTALL)
+    commentaire_match = commentaire_pattern.search(text)
+    commentaire = commentaire_match.group(1).strip() if commentaire_match else ''
+
+    return {
+        'Nom de l\'étudiant': nom,
+        'Points obtenus': points_obtenus,
+        'Points totaux': points_totaux,
+        'Commentaire': commentaire
+    }
+
+def calculer_note_finale(data: Dict[str, Any]) -> str:
+    """
+    Calcule la note finale sous la forme "x/y".
+
+    Args:
+        data (Dict[str, Any]): Un dictionnaire contenant les données d'un étudiant.
+
+    Returns:
+        str: La note finale formatée, par exemple "3/10".
+    """
+    pointobtenu = data.get('Points obtenus', 0)
+    pointtotaux = data.get('Points totaux', 0)
+    print(f"{pointobtenu}/{pointtotaux}")
+
+    return f"{pointobtenu}/{pointtotaux}" if pointtotaux > 0 else "0/0"
+
 
 st.title("Système de correction des Copies")
 
@@ -276,7 +335,7 @@ syntax_weight =  40
 logic_weight = 30
 
 vision_prompt = st.text_area("Entrez le prompt pour la vision :", height=100)
-promptmeta =st.text_area("Entrez le prompt pour la vision student metaprompt :", height=100)
+promptmeta =""  #st.text_area("Entrez le prompt pour la vision student metaprompt :", height=100)
 chatgpt_prompt = st.text_area("Entrez le prompt pour la correction:", height=200)
 
 api_key = st.secrets["API_KEY"]
@@ -349,7 +408,10 @@ if st.button("Lancer la correction"):
                     
                     name, score, feedback, Contents = grade_student_copy(reference_text_combined, student_text_combined, api_key, chatgpt_prompt, ortho_weight, syntax_weight, logic_weight)
                     st.write(f"Nom: {name}, Note: {score}, Commentaire: {feedback}")
-                    results.append({"Nom": name, "Note": score, "Commentaire": Contents})
+                    data_extracted = parse_report_single(Contents)
+                    data=calculer_note_finale(data_extracted)
+                    print(data)
+                    results.append({"Nom": name, "Note": data, "Commentaire": Contents})
                 
                 st.write(Contents)
                 df_results = pd.DataFrame(results)
